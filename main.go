@@ -29,7 +29,7 @@ type CreatePostRequest struct {
 	ReplyTo string `json:"reply_to,omitempty"`
 }
 type LikeRequest struct {
-	ID string `json:"id`
+	ID string `json:"id"`
 }
 type FollowRequest struct {
 	Username string `json:"username"`
