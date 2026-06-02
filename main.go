@@ -513,7 +513,51 @@ func postByIDhandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "deleted")
 
 	case "GET":
-		http.Error(w, "not implemented yet", http.StatusNotImplemented)
+		var p PostResponse
+		var iLiked int
+		var replyTo sql.NullString
+		err := db.QueryRow(`
+		select p.id,p.owner, u.display_name, u.verified,
+		p.text, p.reply_to, p.created_at,
+		(SELECT COUNT(*) FROM likes WHERE post_id = p.id),
+		EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND username = ?)
+		FROM posts p JOIN USERS u ON p.owner = u.username
+		WHERE p.id = ?
+		`, username, id).Scan(&p.ID, &p.Owner, &p.OwnerDisplayName, &p.OwnerVerified,
+			&p.Text, &replyTo, &p.CreatedAt, &p.Likes, &iLiked)
+		if err == sql.ErrNoRows {
+			http.NotFound(w, r)
+			return
+		}
+		if err != nil {
+			http.Error(w, "fetch failed", http.StatusInternalServerError)
+			return
+		}
+		p.Liked = iLiked == 1
+		if replyTo.Valid {
+			p.ReplyTo = &replyTo.String
+		}
+
+		rows, err := db.Query(`
+		SELECT p.id, p.owner, u.display_name, u.verified,
+               p.text, p.reply_to, p.created_at,
+               (SELECT COUNT(*) FROM likes WHERE post_id = p.id),
+               EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND username = ?)
+        FROM posts p JOIN users u ON p.owner = u.username
+        WHERE p.reply_to = ?
+        ORDER BY p.created_at ASC
+    `, username, id)
+		if err != nil {
+			http.Error(w, "replies query failed", http.StatusInternalServerError)
+			return
+		}
+		replies, _ := fetchPosts(rows)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"post":    p,
+			"replies": replies,
+		})
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
