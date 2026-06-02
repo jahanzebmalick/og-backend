@@ -400,7 +400,7 @@ func feedHandler(w http.ResponseWriter, r *http.Request) {
 		EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND username = ?) AS liked
 		FROM posts p
 		JOIN users u ON p.owner = u.username
-		WHERE p.owner = ? OR p.owner IN (SELECT followed FROM follows WHERE follower = ?)
+		WHERE (p.owner = ? OR p.owner IN (SELECT followed FROM follows WHERE follower = ?)) AND p.reply_to IS NULL
 		ORDER BY p.created_at DESC
 		LIMIT 50
 		`, username, username, username)
@@ -436,6 +436,7 @@ func exploreHandler(w http.ResponseWriter, r *http.Request) {
 		EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND username = ?) AS liked
 		FROM posts p
 		JOIN users u ON p.owner = u.username
+		WHERE p.reply_to IS NULL
 		ORDER BY p.created_at DESC
 		LIMIT 50
 		`, username)
