@@ -488,7 +488,7 @@ func likeHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 func postByIDhandler(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/posts"):]
+	id := r.URL.Path[len("/posts/"):]
 	if id == "" {
 		http.NotFound(w, r)
 		return
