@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -106,23 +107,31 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	http.HandleFunc("/signup", signupHandler)
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/logout", logoutHandler)
-	http.HandleFunc("/me", meHandler)
-	http.HandleFunc("/og-status", ogStatusHandler)
-	http.HandleFunc("/posts", postHandler)
-	http.HandleFunc("/posts/", postByIDhandler)
-	http.HandleFunc("/posts/like", likeHandler)
-	http.HandleFunc("/feed", feedHandler)
-	http.HandleFunc("/explore", exploreHandler)
-	http.HandleFunc("/follow", followHandler)
-	http.HandleFunc("/unfollow", unfollowHandler)
-	http.HandleFunc("/users/", userByNameHandler)
-	http.HandleFunc("/search", searchHandler)
+	allowedOrigin := os.Getenv("FRONTEND_URL")
+	if allowedOrigin == "" {
+		allowedOrigin = "http://localhost:5173"
+	}
+	http.HandleFunc("/signup", corsMiddleware(signupHandler, allowedOrigin))
+	http.HandleFunc("/login", corsMiddleware(loginHandler, allowedOrigin))
+	http.HandleFunc("/logout", corsMiddleware(logoutHandler, allowedOrigin))
+	http.HandleFunc("/me", corsMiddleware(meHandler, allowedOrigin))
+	http.HandleFunc("/og-status", corsMiddleware(ogStatusHandler, allowedOrigin))
+	http.HandleFunc("/posts", corsMiddleware(postHandler, allowedOrigin))
+	http.HandleFunc("/posts/", corsMiddleware(postByIDhandler, allowedOrigin))
+	http.HandleFunc("/posts/like", corsMiddleware(likeHandler, allowedOrigin))
+	http.HandleFunc("/feed", corsMiddleware(feedHandler, allowedOrigin))
+	http.HandleFunc("/explore", corsMiddleware(exploreHandler, allowedOrigin))
+	http.HandleFunc("/follow", corsMiddleware(followHandler, allowedOrigin))
+	http.HandleFunc("/unfollow", corsMiddleware(unfollowHandler, allowedOrigin))
+	http.HandleFunc("/users/", corsMiddleware(userByNameHandler, allowedOrigin))
+	http.HandleFunc("/search", corsMiddleware(searchHandler, allowedOrigin))
 
-	fmt.Println("OG server starting on :8080")
-	http.ListenAndServe(":8080", nil)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	fmt.Println("OG server starting on :" + port)
+	http.ListenAndServe(":"+port, nil)
 
 }
 
@@ -234,9 +243,12 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	sessions[sessionID] = req.Username
 
 	http.SetCookie(w, &http.Cookie{
-		Name:  "session",
-		Value: sessionID,
-		Path:  "/",
+		Name:     "session",
+		Value:    sessionID,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteNoneMode,
+		Secure:   true,
 	})
 }
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -673,4 +685,18 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(users)
+}
+func corsMiddleware(next http.HandlerFunc, allowedOrigin string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-type, Authorization")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next(w, r)
+	}
 }
