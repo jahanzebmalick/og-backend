@@ -26,7 +26,7 @@ type loginRequest struct {
 }
 type CreatePostRequest struct {
 	Text    string `json:"text"`
-	ReplyTo string `json:"reply_to,omitempty`
+	ReplyTo string `json:"reply_to,omitempty"`
 }
 type LikeRequest struct {
 	ID string `json:"id`
