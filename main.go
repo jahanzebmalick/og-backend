@@ -608,11 +608,11 @@ func userByNameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var followingCount int
 	var followersCount int
-	db.QueryRow("SELECT COUNT (*) FROM follows WHERE follower = ?", targetUsername).Scan(&followingCount)
-	db.QueryRow("SELECT COUNT (*) FROM follows WHERE followed = ?", targetUsername).Scan(&followersCount)
+	db.QueryRow("SELECT COUNT(*) FROM follows WHERE follower = ?", targetUsername).Scan(&followingCount)
+	db.QueryRow("SELECT COUNT(*) FROM follows WHERE followed = ?", targetUsername).Scan(&followersCount)
 
 	var isFollowing int
-	db.QueryRow("SELECT COUND(*) FROM follows WHERE follower = ? AND folowed = ?", me, targetUsername).Scan(&isFollowing)
+	db.QueryRow("SELECT COUNT(*) FROM follows WHERE follower = ? AND followed = ?", me, targetUsername).Scan(&isFollowing)
 
 	rows, err := db.Query(`
 	SELECT
